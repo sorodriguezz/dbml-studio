@@ -1,5 +1,4 @@
 import { StreamLanguage } from "@codemirror/language";
-import { sql } from "@codemirror/lang-sql";
 
 interface DBMLState {
   inComment: boolean;
