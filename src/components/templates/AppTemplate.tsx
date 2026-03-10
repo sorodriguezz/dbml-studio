@@ -1,8 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { DiagramCanvas, DBMLEditor, ConversionPanel, TableInspector, SQLImportPanel } from "@/components/organisms";
+import { ShareButton } from "@/components/molecules/ShareButton";
+import { DBMLReferenceModal } from "@/components/organisms/DBMLReferenceModal";
+import { Button } from "@/components/atoms";
 import { useAppStore } from "@/store/useAppStore";
+import { decodeDBMLFromUrl, clearDBMLFromUrl } from "@/lib/utils/shareUrl";
 import type { ActiveTab } from "@/types";
 
 const TABS: { id: ActiveTab; label: string }[] = [
@@ -18,7 +22,23 @@ const MAX_INSPECTOR_W  = 520;
 const DEFAULT_INSPECTOR_W = 224;
 
 export function AppTemplate() {
-  const { activeTab, setActiveTab, parsed } = useAppStore();
+  const { activeTab, setActiveTab, parsed, setDBML, parse } = useAppStore();
+  const [showReference, setShowReference] = useState(false);
+  const [loadingShared, setLoadingShared] = useState(false);
+
+  // Load DBML from URL hash on mount
+  useEffect(() => {
+    const shared = decodeDBMLFromUrl();
+    if (shared) {
+      setLoadingShared(true);
+      setDBML(shared);
+      clearDBMLFromUrl();
+      setTimeout(() => {
+        parse();
+        setLoadingShared(false);
+      }, 150);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Editor panel state ─────────────────────────────────────────────
   const [editorW, setEditorW]               = useState(DEFAULT_EDITOR_W);
@@ -72,6 +92,26 @@ export function AppTemplate() {
     };
   }, []);
 
+  if (loadingShared) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-zinc-950 gap-4">
+        <div className="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-900/40 animate-pulse">
+          <span className="text-zinc-950 font-black text-sm select-none">DB</span>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <svg className="animate-spin h-4 w-4 text-amber-400" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span className="text-sm text-zinc-300 font-medium">Cargando diagrama compartido…</span>
+          </div>
+          <span className="text-[10px] text-zinc-600 font-mono">Descomprimiendo esquema desde la URL</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-zinc-950 overflow-hidden">
       {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -108,6 +148,20 @@ export function AppTemplate() {
             </button>
           ))}
         </nav>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          <ShareButton />
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowReference(true)}
+            title="DBML Reference"
+          >
+            <BookOpen size={12} />
+            <span className="hidden sm:inline">Referencia</span>
+          </Button>
+        </div>
 
         {/* Status */}
         <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-mono text-zinc-600">
@@ -186,6 +240,9 @@ export function AppTemplate() {
           </aside>
         )}
       </div>
+
+      {/* DBML Reference Modal */}
+      <DBMLReferenceModal open={showReference} onClose={() => setShowReference(false)} />
     </div>
   );
 }

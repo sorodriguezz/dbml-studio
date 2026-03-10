@@ -1,6 +1,6 @@
 "use client";
-import { useCallback, useEffect } from "react";
-import { Play, AlertTriangle, Download } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Play, AlertTriangle, Download, Upload } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { Button, Tooltip } from "@/components/atoms";
 import { useAppStore } from "@/store/useAppStore";
@@ -10,6 +10,9 @@ import { dbmlExtensions } from "@/lib/editors/dbmlTheme";
 
 export function DBMLEditor() {
   const { dbml, parsed, isParsingError, setDBML, parse } = useAppStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   // Auto-parse on mount
   useEffect(() => { parse(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
@@ -33,8 +36,108 @@ export function DBMLEditor() {
     URL.revokeObjectURL(url);
   }, [dbml]);
 
+  const loadFile = useCallback((file: File) => {
+    setFileError(null);
+
+    // Validate extension
+    const name = file.name.toLowerCase();
+    if (!name.endsWith(".dbml")) {
+      setFileError(`Archivo no válido: "${file.name}". Solo se aceptan archivos .dbml`);
+      setTimeout(() => setFileError(null), 4000);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result;
+      if (typeof content !== "string" || !content.trim()) {
+        setFileError("El archivo está vacío");
+        setTimeout(() => setFileError(null), 4000);
+        return;
+      }
+
+      // Basic DBML content validation: must contain at least a Table, Enum, or Ref keyword
+      const hasDBMLContent = /\b(Table|Enum|Ref)\b/i.test(content);
+      if (!hasDBMLContent) {
+        setFileError("El archivo no contiene sintaxis DBML válida (Table, Enum o Ref)");
+        setTimeout(() => setFileError(null), 4000);
+        return;
+      }
+
+      setDBML(content);
+      setTimeout(() => parse(), 100);
+    };
+    reader.onerror = () => {
+      setFileError("Error al leer el archivo");
+      setTimeout(() => setFileError(null), 4000);
+    };
+    reader.readAsText(file);
+  }, [setDBML, parse]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    setFileError(null);
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(file);
+  }, [loadFile]);
+
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileError(null);
+    const file = e.target.files?.[0];
+    if (file) loadFile(file);
+    // Reset input so the same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [loadFile]);
+
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-950/80 border-2 border-dashed border-amber-500 rounded-lg">
+          <div className="text-center">
+            <Upload size={32} className="mx-auto mb-2 text-amber-400" />
+            <p className="text-sm text-amber-400 font-mono">Soltar archivo .dbml</p>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".dbml"
+        onChange={handleFileInput}
+        className="hidden"
+      />
+
+      {/* File validation error */}
+      {fileError && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-950/40 border-b border-red-900/40 text-xs text-red-400 font-mono flex-shrink-0 fade-in">
+          <AlertTriangle size={12} />
+          <span className="truncate">{fileError}</span>
+          <button onClick={() => setFileError(null)} className="ml-auto text-red-500 hover:text-red-300 transition-colors">✕</button>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 bg-zinc-900/50 flex-shrink-0">
         <div className="flex items-center gap-2">
@@ -47,7 +150,12 @@ export function DBMLEditor() {
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <Tooltip content="Export DBML">
+          <Tooltip content="Cargar archivo .dbml">
+            <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Upload size={11} />
+            </Button>
+          </Tooltip>
+          <Tooltip content="Exportar DBML">
             <Button variant="secondary" size="sm" onClick={handleExport}>
               <Download size={11} />
             </Button>

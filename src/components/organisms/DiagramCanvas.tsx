@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useEffect, useMemo, useCallback } from "react";
-import { ZoomIn, ZoomOut, RotateCcw, Download, LayoutGrid } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, Download, LayoutGrid, Crosshair } from "lucide-react";
 import { TableCard } from "./TableCard";
 import { TableStats } from "@/components/molecules";
 import { Button, Tooltip } from "@/components/atoms";
@@ -67,9 +67,10 @@ function useRefLines(refs: DBMLRef[], tables: Array<{ name: string; x: number; y
 
 export function DiagramCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { parsed, offsetX, offsetY, zoom, selectedTable, hoveredRef, selectTable, setHoveredRef, setZoom, resetViewport, reLayout } = useAppStore();
+  const { parsed, offsetX, offsetY, zoom, selectedTable, hoveredRef, selectTable, setHoveredRef, setZoom, resetViewport, reLayout, centerViewport } = useAppStore();
   const { startCanvasDrag, startTableDrag, handleWheel } = useDiagramInteraction();
   const { exportPNG } = useExportDiagram(containerRef, parsed?.tables ?? []);
+  const hasCenteredRef = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -77,6 +78,22 @@ export function DiagramCanvas() {
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
   }, [handleWheel]);
+
+  // Center viewport when tables first appear
+  useEffect(() => {
+    if (parsed && parsed.tables.length > 0 && containerRef.current && !hasCenteredRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      centerViewport(rect.width, rect.height);
+      hasCenteredRef.current = true;
+    }
+  }, [parsed, centerViewport]);
+
+  const handleCenter = useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      centerViewport(rect.width, rect.height);
+    }
+  }, [centerViewport]);
 
   const refLines = useRefLines(parsed?.refs ?? [], parsed?.tables ?? []);
 
@@ -213,6 +230,11 @@ export function DiagramCanvas() {
         <Tooltip content="Auto-arrange tables">
           <Button variant="secondary" size="sm" onClick={reLayout}>
             <LayoutGrid size={13} />
+          </Button>
+        </Tooltip>
+        <Tooltip content="Centrar diagrama">
+          <Button variant="secondary" size="sm" onClick={handleCenter}>
+            <Crosshair size={13} />
           </Button>
         </Tooltip>
         <Tooltip content="Zoom in">

@@ -32,6 +32,7 @@ interface AppState {
   moveTable: (name: string, x: number, y: number) => void;
   resetViewport: () => void;
   reLayout: () => void;
+  centerViewport: (containerWidth: number, containerHeight: number) => void;
 }
 
 const SAMPLE_DBML = `Table users {
@@ -124,7 +125,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => {
       if (!s.parsed) return s;
       const tables = s.parsed.tables.map((t: DBMLTable) =>
-        t.name === name ? { ...t, x: Math.max(0, x), y: Math.max(0, y) } : t
+        t.name === name ? { ...t, x, y } : t
       );
       return { parsed: { ...s.parsed, tables } };
     }),
@@ -165,5 +166,26 @@ export const useAppStore = create<AppState>((set, get) => ({
         y: rowY[Math.floor(i / COLS)],
       }));
       return { parsed: { ...s.parsed, tables }, offsetX: 0, offsetY: 0 };
+    }),
+
+  centerViewport: (containerWidth, containerHeight) =>
+    set((s) => {
+      if (!s.parsed || s.parsed.tables.length === 0) return s;
+      const TABLE_W = 260;
+      const HEADER_H = 40;
+      const FIELD_H = 32;
+      const tables = s.parsed.tables;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const t of tables) {
+        minX = Math.min(minX, t.x);
+        minY = Math.min(minY, t.y);
+        maxX = Math.max(maxX, t.x + TABLE_W);
+        maxY = Math.max(maxY, t.y + HEADER_H + t.fields.length * FIELD_H);
+      }
+      const contentW = maxX - minX;
+      const contentH = maxY - minY;
+      const offsetX = (containerWidth - contentW * s.zoom) / 2 - minX * s.zoom;
+      const offsetY = (containerHeight - contentH * s.zoom) / 2 - minY * s.zoom;
+      return { offsetX, offsetY };
     }),
 }));
