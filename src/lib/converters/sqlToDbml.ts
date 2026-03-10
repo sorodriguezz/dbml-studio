@@ -145,8 +145,10 @@ export function sqlToDbml(sql: string): string {
     .trim();
 
   // Match CREATE TABLE [IF NOT EXISTS] [schema.]table_name ( ... );
+  // NOTE: group 2 must be greedy ([^;]*) so the regex backtracks to the *last*
+  // closing paren before the semicolon, not the first one inside e.g. VARCHAR(255).
   const createTableRegex =
-    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["'\[`]?\w+["'\]`]?\s*\.\s*)?["'\[`]?(\w+)["'\]`]?\s*\(([^;]*?)\s*\)\s*(?:WITHOUT\s+ROWID\s*)?;?/gi;
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["'\[`]?\w+["'\]`]?\s*\.\s*)?["'\[`]?(\w+)["'\]`]?\s*\(([^;]*)\)\s*(?:WITHOUT\s+ROWID\s*)?;?/gi;
 
   let m: RegExpExecArray | null;
   while ((m = createTableRegex.exec(clean)) !== null) {

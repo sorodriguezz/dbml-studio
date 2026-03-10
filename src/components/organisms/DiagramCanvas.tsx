@@ -33,8 +33,8 @@ function useRefLines(refs: DBMLRef[], tables: Array<{ name: string; x: number; y
       const toTable = tableMap.get(tt);
       if (!fromTable || !toTable) return [];
 
-      const ffIdx = fromTable.fields.findIndex(f => f.name === ff);
-      const tfIdx = toTable.fields.findIndex(f => f.name === tf);
+      const ffIdx = fromTable.fields.findIndex((f: { name: string }) => f.name === ff);
+      const tfIdx = toTable.fields.findIndex((f: { name: string }) => f.name === tf);
 
       const fy = fromTable.y + HEADER_H + (ffIdx >= 0 ? ffIdx * FIELD_H + FIELD_H / 2 : 16);
       const ty = toTable.y + HEADER_H + (tfIdx >= 0 ? tfIdx * FIELD_H + FIELD_H / 2 : 16);
