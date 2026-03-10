@@ -19,6 +19,8 @@ interface RefLine {
   tx: number; ty: number;
   cx1: number; cx2: number;
   type: string;
+  fromTable: string;
+  toTable: string;
 }
 
 function useRefLines(refs: DBMLRef[], tables: Array<{ name: string; x: number; y: number; fields: Array<{ name: string }> }>): RefLine[] {
@@ -58,14 +60,14 @@ function useRefLines(refs: DBMLRef[], tables: Array<{ name: string; x: number; y
         cx2 = tx + spread;
       }
 
-      return [{ key: `${i}-${ref.from}-${ref.to}`, fx, fy, tx, ty, cx1, cx2, type: ref.type }];
+      return [{ key: `${i}-${ref.from}-${ref.to}`, fx, fy, tx, ty, cx1, cx2, type: ref.type, fromTable: ft, toTable: tt }];
     });
   }, [refs, tables]);
 }
 
 export function DiagramCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { parsed, offsetX, offsetY, zoom, selectedTable, selectTable, setZoom, resetViewport, reLayout } = useAppStore();
+  const { parsed, offsetX, offsetY, zoom, selectedTable, hoveredRef, selectTable, setHoveredRef, setZoom, resetViewport, reLayout } = useAppStore();
   const { startCanvasDrag, startTableDrag, handleWheel } = useDiagramInteraction();
   const { exportPNG } = useExportDiagram(containerRef, parsed?.tables ?? []);
 
@@ -125,35 +127,70 @@ export function DiagramCanvas() {
         data-export="inner"
         style={{ transform: `translate(${offsetX}px,${offsetY}px) scale(${zoom})`, transformOrigin: "0 0", position: "absolute", top: 0, left: 0 }}
       >
-        {parsed.tables.map(table => (
-          <TableCard
-            key={table.name}
-            table={table}
-            refs={parsed.refs}
-            isSelected={selectedTable === table.name}
-            onSelect={selectTable}
-            onDragStart={startTableDrag}
-          />
-        ))}
+        {parsed.tables.map(table => {
+          const isInHoveredRef = hoveredRef && (hoveredRef.from === table.name || hoveredRef.to === table.name);
+          return (
+            <TableCard
+              key={table.name}
+              table={table}
+              refs={parsed.refs}
+              isSelected={selectedTable === table.name}
+              isHighlighted={!!isInHoveredRef}
+              onSelect={selectTable}
+              onDragStart={startTableDrag}
+            />
+          );
+        })}
       </div>
 
       {/* Relationship lines — rendered AFTER table cards so they appear on top */}
-      <svg data-export="svg-refs" className="absolute inset-0 w-full h-full pointer-events-none" style={{ overflow: "visible" }}>
+      <svg data-export="svg-refs" className="absolute inset-0 w-full h-full" style={{ overflow: "visible", pointerEvents: "none" }}>
         <g transform={`translate(${offsetX},${offsetY}) scale(${zoom})`}>
-          {refLines.map(line => (
-            <g key={line.key}>
-              <path
-                d={`M ${line.fx} ${line.fy} C ${line.cx1} ${line.fy}, ${line.cx2} ${line.ty}, ${line.tx} ${line.ty}`}
-                stroke="#f59e0b"
-                strokeWidth={Math.max(1, 1.5 / zoom)}
-                strokeOpacity="0.6"
-                fill="none"
-                strokeDasharray={line.type === "-" ? `${4/zoom},${3/zoom}` : undefined}
-              />
-              <circle cx={line.fx} cy={line.fy} r={3.5 / zoom} fill="#f59e0b" fillOpacity="0.9" />
-              <circle cx={line.tx} cy={line.ty} r={3.5 / zoom} fill="#f59e0b" fillOpacity="0.9" />
-            </g>
-          ))}
+          {refLines.map(line => {
+            const isHovered = hoveredRef?.from === `${line.fromTable}.` || hoveredRef?.to === `${line.toTable}.` || 
+                              (hoveredRef && line.key.includes(hoveredRef.from) && line.key.includes(hoveredRef.to));
+            const pathD = `M ${line.fx} ${line.fy} C ${line.cx1} ${line.fy}, ${line.cx2} ${line.ty}, ${line.tx} ${line.ty}`;
+            
+            return (
+              <g key={line.key} style={{ pointerEvents: "auto", cursor: "pointer" }}>
+                {/* Invisible wider path for easier hover detection */}
+                <path
+                  d={pathD}
+                  stroke="transparent"
+                  strokeWidth={Math.max(10, 10 / zoom)}
+                  fill="none"
+                  onMouseEnter={() => setHoveredRef({ from: line.fromTable, to: line.toTable })}
+                  onMouseLeave={() => setHoveredRef(null)}
+                />
+                {/* Visible path */}
+                <path
+                  d={pathD}
+                  stroke={isHovered ? "#fbbf24" : "#f59e0b"}
+                  strokeWidth={isHovered ? Math.max(2.5, 2.5 / zoom) : Math.max(1, 1.5 / zoom)}
+                  strokeOpacity={isHovered ? "1" : "0.6"}
+                  fill="none"
+                  strokeDasharray={line.type === "-" ? `${4/zoom},${3/zoom}` : undefined}
+                  style={{ pointerEvents: "none", transition: "all 0.2s ease" }}
+                />
+                <circle 
+                  cx={line.fx} 
+                  cy={line.fy} 
+                  r={isHovered ? 5 / zoom : 3.5 / zoom} 
+                  fill={isHovered ? "#fbbf24" : "#f59e0b"} 
+                  fillOpacity={isHovered ? "1" : "0.9"}
+                  style={{ pointerEvents: "none", transition: "all 0.2s ease" }}
+                />
+                <circle 
+                  cx={line.tx} 
+                  cy={line.ty} 
+                  r={isHovered ? 5 / zoom : 3.5 / zoom} 
+                  fill={isHovered ? "#fbbf24" : "#f59e0b"} 
+                  fillOpacity={isHovered ? "1" : "0.9"}
+                  style={{ pointerEvents: "none", transition: "all 0.2s ease" }}
+                />
+              </g>
+            );
+          })}
         </g>
       </svg>
 

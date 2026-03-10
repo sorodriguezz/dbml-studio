@@ -12,8 +12,9 @@ export function Tooltip({ content, children }: TooltipProps) {
     <div className="relative inline-flex" onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
       {children}
       {visible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-[11px] text-zinc-300 whitespace-nowrap z-50 pointer-events-none">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1.5 rounded-md bg-zinc-900 border border-amber-500/40 text-[11px] text-amber-100 font-medium whitespace-nowrap z-[100] pointer-events-none shadow-xl shadow-black/50 animate-in fade-in duration-150">
           {content}
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-px w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-amber-500/40" />
         </div>
       )}
     </div>

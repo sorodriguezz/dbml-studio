@@ -13,6 +13,7 @@ interface AppState {
   activeTab: ActiveTab;
   conversionTarget: ConversionTarget;
   selectedTable: string | null;
+  hoveredRef: { from: string; to: string } | null;
 
   // Diagram viewport
   offsetX: number;
@@ -25,6 +26,7 @@ interface AppState {
   setActiveTab: (t: ActiveTab) => void;
   setConversionTarget: (t: ConversionTarget) => void;
   selectTable: (name: string | null) => void;
+  setHoveredRef: (ref: { from: string; to: string } | null) => void;
   setViewport: (offsetX: number, offsetY: number, zoom?: number) => void;
   setZoom: (z: number) => void;
   moveTable: (name: string, x: number, y: number) => void;
@@ -92,6 +94,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeTab: "diagram",
   conversionTarget: "typeorm",
   selectedTable: null,
+  hoveredRef: null,
   offsetX: 0,
   offsetY: 0,
   zoom: 1,
@@ -109,6 +112,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setActiveTab: (t) => set({ activeTab: t }),
   setConversionTarget: (t) => set({ conversionTarget: t }),
+  setHoveredRef: (ref) => set({ hoveredRef: ref }),
   selectTable: (name) => set({ selectedTable: name }),
 
   setViewport: (offsetX, offsetY, zoom) =>

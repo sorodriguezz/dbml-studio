@@ -1,9 +1,12 @@
 "use client";
 import { useCallback, useEffect } from "react";
-import { Play, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/atoms";
+import { Play, AlertTriangle, Download } from "lucide-react";
+import CodeMirror from "@uiw/react-codemirror";
+import { Button, Tooltip } from "@/components/atoms";
 import { useAppStore } from "@/store/useAppStore";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { dbmlLanguage } from "@/lib/editors/dbmlLanguage";
+import { dbmlExtensions } from "@/lib/editors/dbmlTheme";
 
 export function DBMLEditor() {
   const { dbml, parsed, isParsingError, setDBML, parse } = useAppStore();
@@ -13,10 +16,22 @@ export function DBMLEditor() {
 
   const debouncedParse = useDebounce(parse, 600);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDBML(e.target.value);
+  const handleChange = useCallback((value: string) => {
+    setDBML(value);
     debouncedParse();
   }, [setDBML, debouncedParse]);
+
+  const handleExport = useCallback(() => {
+    const blob = new Blob([dbml], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `schema-${Date.now()}.dbml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [dbml]);
 
   return (
     <div className="flex flex-col h-full">
@@ -31,10 +46,17 @@ export function DBMLEditor() {
             </span>
           )}
         </div>
-        <Button variant="primary" size="sm" onClick={parse}>
-          <Play size={11} fill="currentColor" />
-          Parse
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Tooltip content="Export DBML">
+            <Button variant="secondary" size="sm" onClick={handleExport}>
+              <Download size={11} />
+            </Button>
+          </Tooltip>
+          <Button variant="primary" size="sm" onClick={parse}>
+            <Play size={11} fill="currentColor" />
+            Parse
+          </Button>
+        </div>
       </div>
 
       {/* Error banner */}
@@ -45,16 +67,35 @@ export function DBMLEditor() {
         </div>
       )}
 
-      {/* Textarea */}
-      <textarea
-        className="flex-1 p-4 font-mono text-xs text-zinc-300 bg-transparent resize-none outline-none leading-relaxed dbml-editor"
-        value={dbml}
-        onChange={handleChange}
-        placeholder="Paste your DBML here..."
-        spellCheck={false}
-        autoCorrect="off"
-        autoCapitalize="off"
-      />
+      {/* CodeMirror Editor */}
+      <div className="flex-1 overflow-auto">
+        <CodeMirror
+          value={dbml}
+          height="100%"
+          extensions={[dbmlLanguage, ...dbmlExtensions]}
+          onChange={handleChange}
+          basicSetup={{
+            lineNumbers: true,
+            highlightActiveLineGutter: true,
+            highlightActiveLine: true,
+            foldGutter: false,
+            dropCursor: true,
+            indentOnInput: true,
+            bracketMatching: true,
+            closeBrackets: true,
+            autocompletion: false,
+            rectangularSelection: true,
+            crosshairCursor: false,
+            highlightSelectionMatches: false,
+            closeBracketsKeymap: true,
+            searchKeymap: true,
+            foldKeymap: false,
+            completionKeymap: false,
+            lintKeymap: false,
+          }}
+          className="dbml-editor-cm"
+        />
+      </div>
 
       {/* Footer */}
       <div className="px-3 py-1.5 border-t border-zinc-800/60 flex items-center justify-between flex-shrink-0">

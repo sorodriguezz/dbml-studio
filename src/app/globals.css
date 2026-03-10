@@ -35,3 +35,27 @@ body {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* CodeMirror Editor Styles */
+.dbml-editor-cm {
+  height: 100%;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.dbml-editor-cm .cm-editor {
+  height: 100%;
+  background: transparent;
+}
+
+.dbml-editor-cm .cm-scroller {
+  overflow: auto;
+  line-height: 1.7;
+}
+
+.dbml-editor-cm .cm-gutters {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.dbml-editor-cm .cm-line {
+  padding: 0 8px;
+}
