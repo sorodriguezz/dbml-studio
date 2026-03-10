@@ -1,6 +1,10 @@
 import LZString from "lz-string";
+import pako from "pako";
 
-const HASH_KEY = "#d=";
+/** Legacy prefix (lz-string base64). */
+const HASH_KEY_V1 = "#d=";
+/** New prefix (pako deflateRaw + base64url). */
+const HASH_KEY_V2 = "#d2=";
 
 /** Strip comments and collapse redundant whitespace to shrink input before compression. */
 function minifyDBML(dbml: string): string {
@@ -14,12 +18,27 @@ function minifyDBML(dbml: string): string {
     .trim();
 }
 
-/** Convert standard base64 to URL-safe base64 (no padding). */
-function toBase64Url(b64: string): string {
+/* ── base64url helpers ─────────────────────────────────────── */
+
+function uint8ToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const b64 = btoa(binary);
   return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/** Restore standard base64 from URL-safe variant. */
+function base64UrlToUint8(b64url: string): Uint8Array {
+  let s = b64url.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = (4 - (s.length % 4)) % 4;
+  if (pad) s += "=".repeat(pad);
+  const binary = atob(s);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/* ── legacy base64url (for v1 decode) ──────────────────────── */
+
 function fromBase64Url(b64url: string): string {
   let s = b64url.replace(/-/g, "+").replace(/_/g, "/");
   const pad = (4 - (s.length % 4)) % 4;
@@ -27,34 +46,54 @@ function fromBase64Url(b64url: string): string {
   return s;
 }
 
+/* ── public API ────────────────────────────────────────────── */
+
 /**
- * Compresses DBML content into a URL-safe string and returns the shareable URL.
+ * Compresses DBML content using pako deflateRaw (level 9) + base64url.
  */
 export function encodeDBMLToUrl(dbml: string): string {
   const minified = minifyDBML(dbml);
-  const compressed = LZString.compressToBase64(minified);
-  const urlSafe = toBase64Url(compressed);
+  const deflated = pako.deflateRaw(new TextEncoder().encode(minified), { level: 9 });
+  const urlSafe = uint8ToBase64Url(deflated);
   const base = typeof window !== "undefined" ? window.location.origin + window.location.pathname : "";
-  return `${base}${HASH_KEY}${urlSafe}`;
+  return `${base}${HASH_KEY_V2}${urlSafe}`;
 }
 
 /**
  * Reads the URL hash and decompresses DBML content if present.
- * Returns null if no DBML content is found in the URL.
+ * Supports both v2 (pako) and legacy v1 (lz-string) formats.
  */
 export function decodeDBMLFromUrl(): string | null {
   if (typeof window === "undefined") return null;
   const hash = window.location.hash;
-  if (!hash.startsWith(HASH_KEY)) return null;
-  const urlSafe = hash.slice(HASH_KEY.length);
-  if (!urlSafe) return null;
-  try {
-    const b64 = fromBase64Url(urlSafe);
-    const decompressed = LZString.decompressFromBase64(b64);
-    return decompressed || null;
-  } catch {
-    return null;
+
+  // v2 – pako deflateRaw
+  if (hash.startsWith(HASH_KEY_V2)) {
+    const urlSafe = hash.slice(HASH_KEY_V2.length);
+    if (!urlSafe) return null;
+    try {
+      const bytes = base64UrlToUint8(urlSafe);
+      const inflated = pako.inflateRaw(bytes);
+      return new TextDecoder().decode(inflated) || null;
+    } catch {
+      return null;
+    }
   }
+
+  // v1 – lz-string (backward compatibility)
+  if (hash.startsWith(HASH_KEY_V1)) {
+    const urlSafe = hash.slice(HASH_KEY_V1.length);
+    if (!urlSafe) return null;
+    try {
+      const b64 = fromBase64Url(urlSafe);
+      const decompressed = LZString.decompressFromBase64(b64);
+      return decompressed || null;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 }
 
 /**
