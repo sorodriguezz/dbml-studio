@@ -28,13 +28,5 @@ Follows **Atomic Design**:
 - `store/` — Zustand store (single source of truth)
 - `types/` — shared TypeScript interfaces
 
-## Parser Strategy
-
-1. Tries `@dbml/core` Parser first (full spec: enums, complex types, all ref syntax)
-2. Falls back to a battle-tested regex parser for edge cases
-
-## Notes
-
-- No localStorage/session; all state is in-memory and resets on refresh
-- Drag interaction tracked via `useRef` to avoid stale closures on `mousemove`
-- `useMemo` on ref line calculations — stable for 50+ table schemas
+## Demo
+[Demo](https://sorodriguezz.github.io/dbml-studio/)
