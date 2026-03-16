@@ -30,3 +30,5 @@ Follows **Atomic Design**:
 
 ## Demo
 [Demo](https://sorodriguezz.github.io/dbml-studio/)
+
+![DBML Studio](/docs/dbml-studio.png)
