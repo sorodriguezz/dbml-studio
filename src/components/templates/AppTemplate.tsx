@@ -185,8 +185,8 @@ export function AppTemplate() {
       {/* ── Body ───────────────────────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* Left: DBML Editor (hidden in diff mode) */}
-        {activeTab !== "diff" && (
+        {/* Left: DBML Editor (hidden in diff/import mode) */}
+        {activeTab !== "diff" && activeTab !== "import" && (
           <aside
             className="relative flex-shrink-0 border-r border-zinc-800/80 flex flex-col bg-zinc-900/20 overflow-hidden transition-all duration-200"
             style={{ width: editorCollapsed ? 0 : editorW, minWidth: editorCollapsed ? 0 : MIN_W }}
@@ -195,8 +195,8 @@ export function AppTemplate() {
           </aside>
         )}
 
-        {/* Editor resize / collapse handle (hidden in diff mode) */}
-        {activeTab !== "diff" && (
+        {/* Editor resize / collapse handle (hidden in diff/import mode) */}
+        {activeTab !== "diff" && activeTab !== "import" && (
         <div className="relative flex-shrink-0 flex items-center z-20">
           {!editorCollapsed && (
             <div

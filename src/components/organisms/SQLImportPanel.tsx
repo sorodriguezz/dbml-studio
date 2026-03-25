@@ -1,8 +1,9 @@
 "use client";
 import { useState, useCallback } from "react";
-import { ArrowDownToLine, RefreshCw } from "lucide-react";
+import { ArrowDownToLine, RefreshCw, Copy, Check } from "lucide-react";
 import { Button, CopyButton } from "@/components/atoms";
 import { useAppStore } from "@/store/useAppStore";
+import { useTabsStore } from "@/store/useTabsStore";
 import { sqlToDbml } from "@/lib/converters/sqlToDbml";
 
 const PLACEHOLDER = `-- Paste SQL DDL here (PostgreSQL, MySQL, SQL Server)
@@ -24,20 +25,42 @@ CREATE TABLE posts (
 
 export function SQLImportPanel() {
   const { setDBML, parse, setActiveTab } = useAppStore();
+  const { addTab, updateTabDBML, parseTab, renameTab } = useTabsStore();
   const [sqlInput, setSqlInput] = useState("");
   const [dbmlOutput, setDbmlOutput] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const handleConvert = useCallback(() => {
     if (!sqlInput.trim()) return;
     setDbmlOutput(sqlToDbml(sqlInput));
   }, [sqlInput]);
 
+  const handleCopy = useCallback(async () => {
+    if (!dbmlOutput) return;
+    await navigator.clipboard.writeText(dbmlOutput);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [dbmlOutput]);
+
   const handleUseAsDBML = useCallback(() => {
     if (!dbmlOutput) return;
-    setDBML(dbmlOutput);
-    parse();
-    setActiveTab("diagram");
-  }, [dbmlOutput, setDBML, parse, setActiveTab]);
+    // Create a new tab with the converted DBML
+    const newTabName = `From SQL`;
+    addTab();
+    // addTab creates the tab and sets it as active — grab the new active id after state update
+    setTimeout(() => {
+      const { tabs: updatedTabs, activeTabId } = useTabsStore.getState();
+      // rename + write DBML into the freshly-created active tab
+      renameTab(activeTabId, newTabName);
+      updateTabDBML(activeTabId, dbmlOutput);
+      setDBML(dbmlOutput);
+      setTimeout(() => {
+        parseTab(activeTabId);
+        parse();
+        setActiveTab("diagram");
+      }, 50);
+    }, 0);
+  }, [dbmlOutput, addTab, renameTab, updateTabDBML, parseTab, setDBML, parse, setActiveTab]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950">
@@ -49,10 +72,16 @@ export function SQLImportPanel() {
         </div>
         <div className="flex gap-2">
           {dbmlOutput && (
-            <Button variant="primary" size="sm" onClick={handleUseAsDBML}>
-              <ArrowDownToLine size={12} />
-              Use as DBML
-            </Button>
+            <>
+              <Button variant="secondary" size="sm" onClick={handleCopy}>
+                {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                {copied ? "¡Copiado!" : "Copiar"}
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleUseAsDBML}>
+                <ArrowDownToLine size={12} />
+                Use as DBML
+              </Button>
+            </>
           )}
           <Button variant="secondary" size="sm" onClick={handleConvert} disabled={!sqlInput.trim()}>
             <RefreshCw size={12} />
