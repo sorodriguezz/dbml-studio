@@ -49,8 +49,8 @@ export function toPrisma(schema: ParsedSchema): string {
       lines.push(`  ${f.name.padEnd(22)} ${pType}${opt}${dec ? `  ${dec.trim()}` : ""}`);
     }
 
-    const outRefs = schema.refs.filter(r => r.from.startsWith(table.name + "."));
-    const inRefs  = schema.refs.filter(r => r.to.startsWith(table.name + ".") && r.type === "<");
+    const outRefs = schema.refs.filter(r => r.from.startsWith(table.name + ".") && (r.type === ">" || r.type === "-"));
+    const inRefs  = schema.refs.filter(r => r.to.startsWith(table.name + ".") && r.type === ">");  // type ">" = this table is PK side
 
     for (const ref of outRefs) {
       const [,ff] = ref.from.split(".");

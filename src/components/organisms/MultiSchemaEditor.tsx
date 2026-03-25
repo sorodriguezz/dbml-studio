@@ -1,5 +1,6 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Play, AlertTriangle, Download, Upload, Wand2, Clock, Lightbulb, ChevronDown, Copy, Check } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { Button, Tooltip } from "@/components/atoms";
@@ -35,6 +36,8 @@ export function MultiSchemaEditor() {
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
+  const historyBtnRef = useRef<HTMLButtonElement>(null);
+  const [historyPos, setHistoryPos] = useState<{ top: number; left: number } | null>(null);
 
   // Track client mount to avoid localStorage-derived state causing SSR/CSR mismatch
   useEffect(() => { setMounted(true); }, []);
@@ -43,11 +46,21 @@ export function MultiSchemaEditor() {
   const errors = activeTab?.parsed?.errors ?? [];
   const suggestions = getSuggestions(errors);
 
+  // Measure button position whenever history panel opens
+  useLayoutEffect(() => {
+    if (!showHistory || !historyBtnRef.current) return;
+    const rect = historyBtnRef.current.getBoundingClientRect();
+    setHistoryPos({ top: rect.bottom + 6, left: rect.left });
+  }, [showHistory]);
+
   // Close history dropdown on outside click
   useEffect(() => {
     if (!showHistory) return;
     const handler = (e: MouseEvent) => {
-      if (historyRef.current && !historyRef.current.contains(e.target as Node)) {
+      if (
+        historyRef.current && !historyRef.current.contains(e.target as Node) &&
+        historyBtnRef.current && !historyBtnRef.current.contains(e.target as Node)
+      ) {
         setShowHistory(false);
       }
     };
@@ -209,9 +222,10 @@ export function MultiSchemaEditor() {
         </Tooltip>
 
         {/* History dropdown */}
-        <div className="relative flex-shrink-0" ref={historyRef}>
+        <div className="relative flex-shrink-0">
           <Tooltip content={mounted && history.length === 0 ? "Sin historial" : "Historial"}>
             <button
+              ref={historyBtnRef}
               onClick={() => setShowHistory(v => !v)}
               disabled={mounted && history.length === 0}
               className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
@@ -219,32 +233,38 @@ export function MultiSchemaEditor() {
               <Clock size={12} />
             </button>
           </Tooltip>
-          {showHistory && history.length > 0 && (
-            <div className="absolute right-0 top-full mt-1 w-64 z-50 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl overflow-hidden">
-              <div className="px-3 py-2 border-b border-zinc-800 flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Historial local</span>
-                <span className="text-[10px] text-zinc-600 font-mono">{history.length} entradas</span>
-              </div>
-              <div className="max-h-56 overflow-y-auto">
-                {history.map((item, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleRestoreFromHistory(i)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800 transition-colors group border-b border-zinc-800/50 last:border-0"
-                  >
-                    <Clock size={10} className="text-zinc-600 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-zinc-300 font-mono truncate">
-                        {item.dbml.split("\n")[0].slice(0, 40)}…
-                      </p>
-                      <p className="text-[9px] text-zinc-600 font-mono">{relativeTime(item.ts)}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
+        {/* History panel — rendered in a portal at fixed position to escape overflow-hidden ancestors */}
+        {showHistory && history.length > 0 && historyPos && mounted && createPortal(
+          <div
+            ref={historyRef}
+            style={{ position: "fixed", top: historyPos.top, left: historyPos.left, zIndex: 9999 }}
+            className="w-64 rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden"
+          >
+            <div className="px-3 py-2 border-b border-zinc-800 flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Historial local</span>
+              <span className="text-[10px] text-zinc-600 font-mono">{history.length} entradas</span>
+            </div>
+            <div className="max-h-56 overflow-y-auto">
+              {history.map((item, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleRestoreFromHistory(i)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800 transition-colors group border-b border-zinc-800/50 last:border-0"
+                >
+                  <Clock size={10} className="text-zinc-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] text-zinc-300 font-mono truncate">
+                      {item.dbml.split("\n")[0].slice(0, 40)}…
+                    </p>
+                    <p className="text-[9px] text-zinc-600 font-mono">{relativeTime(item.ts)}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
 
         <Tooltip content="Cargar archivo .dbml">
           <button onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors flex-shrink-0">

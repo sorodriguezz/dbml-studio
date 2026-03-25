@@ -79,6 +79,33 @@ export function toGORM(schema: ParsedSchema): string {
       lines.push(`\t${fieldName}${pad}${gt}\t\`gorm:"${tagParts.join(";")}"\``);
     }
 
+    // Relationship fields
+    const gormOutRefs = schema.refs.filter(r => r.from.startsWith(table.name + ".") && (r.type === ">" || r.type === "-"));
+    const gormInRefs  = schema.refs.filter(r => r.to.startsWith(table.name + ".") && r.type === ">");
+    if (gormOutRefs.length > 0 || gormInRefs.length > 0) {
+      lines.push("");
+      for (const ref of gormOutRefs) {
+        const toTable   = ref.to.split(".")[0];
+        const fromPascal = pascal(ref.from.split(".")[1]);
+        const toFieldPascal = pascal(ref.to.split(".")[1]);
+        const relStruct = pascal(toTable);
+        const fPad = " ".repeat(Math.max(1, 20 - relStruct.length));
+        const ann = ref.type === "-" ? "constraint:OnUpdate:CASCADE,OnDelete:SET NULL" : "";
+        const tag = ann
+          ? `gorm:"foreignKey:${fromPascal};references:${toFieldPascal};${ann}"`
+          : `gorm:"foreignKey:${fromPascal};references:${toFieldPascal}"`;
+        lines.push(`\t${relStruct}${fPad}${relStruct}\t\`${tag}\``);
+      }
+      for (const ref of gormInRefs) {
+        const fromTable  = ref.from.split(".")[0];
+        const fromPascal = pascal(ref.from.split(".")[1]);
+        const relStruct  = pascal(fromTable);
+        const fieldName  = relStruct + "s";
+        const fPad = " ".repeat(Math.max(1, 20 - fieldName.length));
+        lines.push(`\t${fieldName}${fPad}[]${relStruct}\t\`gorm:"foreignKey:${fromPascal}"\``);
+      }
+    }
+
     lines.push("}");
     lines.push("");
     lines.push(`func (${struct}) TableName() string { return "${table.name}" }`, "");

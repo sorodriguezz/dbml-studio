@@ -118,12 +118,27 @@ function enumBlock(en: DBMLEnum, allImports: Set<string>): string {
   return `export const ${camel(en.name)}Enum = pgEnum('${en.name}', [${values}]);`;
 }
 
-function tableBlock(table: DBMLTable, allImports: Set<string>): string {
+function tableBlock(table: DBMLTable, refs: Array<{ from: string; to: string; type: string }>, allImports: Set<string>): string {
+  // Map FK fields for this table: fieldName → { toTable, toField }
+  const fkMap = new Map<string, { toTable: string; toField: string }>();
+  for (const ref of refs) {
+    if (ref.from.startsWith(table.name + ".") && (ref.type === ">" || ref.type === "-")) {
+      const [, ff] = ref.from.split(".");
+      const [tt, tf] = ref.to.split(".");
+      fkMap.set(ff, { toTable: tt, toField: tf });
+    }
+  }
+
   const fieldLines: string[] = [];
   for (const f of table.fields) {
     const { importName, callExpr, chain } = drizzleField(f);
     allImports.add(importName);
-    fieldLines.push(`  ${camel(f.name)}: ${callExpr}${chain},`);
+    let fieldChain = chain;
+    if (fkMap.has(f.name)) {
+      const { toTable, toField } = fkMap.get(f.name)!;
+      fieldChain += `.references(() => ${camel(toTable)}.${camel(toField)})`;
+    }
+    fieldLines.push(`  ${camel(f.name)}: ${callExpr}${fieldChain},`);
   }
   const varName = camel(table.name);
   return [`export const ${varName} = pgTable('${table.name}', {`, ...fieldLines, "});"].join("\n");
@@ -142,7 +157,7 @@ export function toDrizzle(schema: ParsedSchema): string {
   }
 
   for (const table of schema.tables) {
-    blocks.push(tableBlock(table, allImports));
+    blocks.push(tableBlock(table, schema.refs, allImports));
     blocks.push("");
   }
 

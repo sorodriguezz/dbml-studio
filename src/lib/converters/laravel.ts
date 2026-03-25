@@ -91,6 +91,14 @@ export function toLaravel(schema: ParsedSchema): string {
       blocks.push(line);
     }
 
+    // Foreign key constraints
+    const laravelRefs = schema.refs.filter(r => r.from.startsWith(table.name + ".") && (r.type === ">" || r.type === "-"));
+    for (const ref of laravelRefs) {
+      const [, ff] = ref.from.split(".");
+      const [tt, tf] = ref.to.split(".");
+      blocks.push(`            $table->foreign('${ff}')->references('${tf}')->on('${tt}')->onDelete('cascade');`);
+    }
+
     blocks.push("        });");
     blocks.push("    }");
     blocks.push("");

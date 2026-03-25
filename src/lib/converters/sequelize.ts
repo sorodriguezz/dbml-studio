@@ -97,6 +97,24 @@ export function toSequelize(schema: ParsedSchema): string {
     lines.push("      timestamps: false,");
     lines.push("    });");
     lines.push("  }");
+
+    // Associate method
+    const seqOutRefs = schema.refs.filter(r => r.from.startsWith(table.name + ".") && r.type === ">");
+    const seqInRefs  = schema.refs.filter(r => r.to.startsWith(table.name + ".") && r.type === ">");
+    if (seqOutRefs.length > 0 || seqInRefs.length > 0) {
+      lines.push("");
+      lines.push(`  static associate(models: Record<string, typeof Model>): void {`);
+      for (const ref of seqOutRefs) {
+        const [, ff] = ref.from.split(".");
+        const [tt]   = ref.to.split(".");
+        lines.push(`    ${cls}.belongsTo(models.${pascal(tt)}, { foreignKey: '${ff}', as: '${tt}' });`);
+      }
+      for (const ref of seqInRefs) {
+        const [ft, ff] = ref.from.split(".");
+        lines.push(`    ${cls}.hasMany(models.${pascal(ft)}, { foreignKey: '${ff}', as: '${ft}s' });`);
+      }
+      lines.push("  }");
+    }
     lines.push(`}\n`);
   }
 

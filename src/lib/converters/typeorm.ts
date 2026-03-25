@@ -53,8 +53,8 @@ function entity(table: DBMLTable, refs: DBMLRef[]): string {
     lines.push(`  ${f.name}!: ${tsType}${nullable};\n`);
   }
 
-  const outRefs = refs.filter(r => r.from.startsWith(table.name + "."));
-  const inRefs  = refs.filter(r => r.to.startsWith(table.name + ".") && r.type === "<");
+  const outRefs = refs.filter(r => r.from.startsWith(table.name + ".") && (r.type === ">" || r.type === "-"));
+  const inRefs  = refs.filter(r => r.to.startsWith(table.name + ".") && r.type === ">");  // type ">" = toTable is PK side
 
   for (const ref of outRefs) {
     const [,ff] = ref.from.split(".");

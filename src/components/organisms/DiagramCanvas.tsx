@@ -274,7 +274,7 @@ export function DiagramCanvas() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar tabla…"
-            className="bg-transparent text-xs text-zinc-300 placeholder-zinc-600 font-mono outline-none w-28"
+            className="bg-transparent text-xs text-zinc-300 placeholder-zinc-600 font-mono outline-none flex-1 min-w-0"
           />
           {search && (
             <button onClick={() => setSearch("")} className="text-zinc-600 hover:text-zinc-400 transition-colors">
