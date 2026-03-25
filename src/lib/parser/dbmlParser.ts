@@ -73,7 +73,13 @@ function parseWithRegex(input: string): ParsedSchema {
   while ((m = tableRegex.exec(clean)) !== null) {
     const tableName = m[1];
     const fields: DBMLField[] = [];
-    for (const rawLine of m[3].split("\n")) {
+    // Strip Note blocks (single and multi-line) before processing field lines
+    const tableBody = m[3]
+      .replace(/\bNote\s*:\s*'''[\s\S]*?'''/gi, "")
+      .replace(/\bNote\s*:\s*"""[\s\S]*?"""/gi, "")
+      .replace(/\bNote\s*:\s*'[^']*'/gi, "")
+      .replace(/\bNote\s*:\s*"[^"]*"/gi, "");
+    for (const rawLine of tableBody.split("\n")) {
       const line = rawLine.trim();
       if (!line || /^(indexes|Note|\{|\})/.test(line)) continue;
       const fm = line.match(/^["\']?(\w+)["\']?\s+([\w.]+(?:\([^)]*\))?(?:\[\])?)\s*(\[[\s\S]*?\])?/);
