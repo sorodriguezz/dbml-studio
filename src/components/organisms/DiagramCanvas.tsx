@@ -104,7 +104,7 @@ function useRefLines(refs: DBMLRef[], tables: Array<{ name: string; x: number; y
 export function DiagramCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { parsed, offsetX, offsetY, zoom, selectedTable, hoveredRef, selectTable, setHoveredRef, setZoom, resetViewport, reLayout, centerViewport } = useAppStore();
-  const { startCanvasDrag, startTableDrag, startEnumDrag, handleWheel } = useDiagramInteraction();
+  const { startCanvasDrag, startTableDrag, startEnumDrag, handleWheel, isDragging } = useDiagramInteraction();
   const { exportPNG, exportSVG } = useExportDiagram(containerRef, parsed?.tables ?? [], parsed?.refs ?? [], parsed?.enums ?? []);
   const hasCenteredRef = useRef(false);
   const [search, setSearch] = useState("");
@@ -214,8 +214,8 @@ export function DiagramCanvas() {
         ))}
       </div>
 
-      {/* Relationship lines */}
-      <svg data-export="svg-refs" className="absolute inset-0 w-full h-full" style={{ overflow: "visible", pointerEvents: "none" }}>
+      {/* Relationship lines — hidden while dragging to avoid per-frame bezier recompute */}
+      <svg data-export="svg-refs" className="absolute inset-0 w-full h-full" style={{ overflow: "visible", pointerEvents: "none", visibility: isDragging ? "hidden" : "visible" }}>
         <g transform={`translate(${offsetX},${offsetY}) scale(${zoom})`}>
           {refLines.map(line => {
             const isHovered = hoveredRef?.from === `${line.fromTable}.` || hoveredRef?.to === `${line.toTable}.` || 

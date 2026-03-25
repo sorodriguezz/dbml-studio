@@ -31,7 +31,7 @@ export const TableCard = memo(function TableCard({ table, refs, isSelected, isHi
       }}
       onMouseDown={(e) => { onDragStart(e, table); onSelect(table.name); }}
       className={cn(
-        "rounded-lg border select-none transition-all duration-200 table-card bg-zinc-900 shadow-xl",
+        "rounded-lg border select-none transition-[border-color,box-shadow,opacity] duration-200 table-card bg-zinc-900 shadow-xl",
         isHighlighted
           ? "border-amber-400 shadow-amber-500/40 ring-2 ring-amber-400/60 scale-[1.02]"
           : isSelected

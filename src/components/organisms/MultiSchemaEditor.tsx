@@ -185,82 +185,94 @@ export function MultiSchemaEditor() {
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 bg-zinc-900/50 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-mono">DBML</span>
-          {activeTab && mounted && (
-            <span className={`flex items-center gap-1 text-[10px] font-mono ${activeTab.isError ? "text-red-400" : "text-emerald-500"}`}>
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-current" />
-              {activeTab.isError ? "Error" : `${activeTab.parsed?.tables.length ?? 0} tables`}
+      <div className="flex items-center gap-1 px-2 py-1 border-b border-zinc-800 bg-zinc-900/50 flex-shrink-0">
+        {/* Status badge — shrinks first */}
+        {activeTab && mounted ? (
+          <Tooltip content={activeTab.isError ? "Error de parseo" : `${activeTab.parsed?.tables.length ?? 0} tablas parseadas`}>
+            <span className={`flex items-center gap-1 text-[10px] font-mono mr-auto min-w-0 cursor-default select-none px-1 ${activeTab.isError ? "text-red-400" : "text-zinc-500"}`}>
+              <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeTab.isError ? "bg-red-400" : "bg-emerald-500"}`} />
+              <span className="truncate">{activeTab.isError ? "err" : `${activeTab.parsed?.tables.length ?? 0}t`}</span>
             </span>
+          </Tooltip>
+        ) : (
+          <span className="mr-auto" />
+        )}
+
+        {/* Divider */}
+        <div className="w-px h-3.5 bg-zinc-700/50 flex-shrink-0 mx-0.5" />
+
+        {/* Action buttons — ghost style, compact */}
+        <Tooltip content="Formatear DBML">
+          <button onClick={handleFormat} className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors flex-shrink-0">
+            <Wand2 size={12} />
+          </button>
+        </Tooltip>
+
+        {/* History dropdown */}
+        <div className="relative flex-shrink-0" ref={historyRef}>
+          <Tooltip content={mounted && history.length === 0 ? "Sin historial" : "Historial"}>
+            <button
+              onClick={() => setShowHistory(v => !v)}
+              disabled={mounted && history.length === 0}
+              className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Clock size={12} />
+            </button>
+          </Tooltip>
+          {showHistory && history.length > 0 && (
+            <div className="absolute right-0 top-full mt-1 w-64 z-50 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl overflow-hidden">
+              <div className="px-3 py-2 border-b border-zinc-800 flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Historial local</span>
+                <span className="text-[10px] text-zinc-600 font-mono">{history.length} entradas</span>
+              </div>
+              <div className="max-h-56 overflow-y-auto">
+                {history.map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleRestoreFromHistory(i)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800 transition-colors group border-b border-zinc-800/50 last:border-0"
+                  >
+                    <Clock size={10} className="text-zinc-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-zinc-300 font-mono truncate">
+                        {item.dbml.split("\n")[0].slice(0, 40)}…
+                      </p>
+                      <p className="text-[9px] text-zinc-600 font-mono">{relativeTime(item.ts)}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <Tooltip content="Formatear DBML">
-            <Button variant="secondary" size="sm" onClick={handleFormat}>
-              <Wand2 size={11} />
-            </Button>
-          </Tooltip>
 
-          {/* History dropdown */}
-          <div className="relative" ref={historyRef}>
-            <Tooltip content="Historial">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowHistory(v => !v)}
-                disabled={mounted && history.length === 0}
-              >
-                <Clock size={11} />
-              </Button>
-            </Tooltip>
-            {showHistory && history.length > 0 && (
-              <div className="absolute right-0 top-full mt-1 w-64 z-50 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl overflow-hidden">
-                <div className="px-3 py-2 border-b border-zinc-800 flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Historial local</span>
-                  <span className="text-[10px] text-zinc-600 font-mono">{history.length} entradas</span>
-                </div>
-                <div className="max-h-56 overflow-y-auto">
-                  {history.map((item, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleRestoreFromHistory(i)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800 transition-colors group border-b border-zinc-800/50 last:border-0"
-                    >
-                      <Clock size={10} className="text-zinc-600 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-zinc-300 font-mono truncate">
-                          {item.dbml.split("\n")[0].slice(0, 40)}…
-                        </p>
-                        <p className="text-[9px] text-zinc-600 font-mono">{relativeTime(item.ts)}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+        <Tooltip content="Cargar archivo .dbml">
+          <button onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors flex-shrink-0">
+            <Upload size={12} />
+          </button>
+        </Tooltip>
 
-          <Tooltip content="Cargar .dbml">
-            <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
-              <Upload size={11} />
-            </Button>
-          </Tooltip>
-          <Tooltip content="Copiar DBML">
-            <Button variant="secondary" size="sm" onClick={handleCopy}>
-              {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-            </Button>
-          </Tooltip>
-          <Tooltip content="Exportar DBML">
-            <Button variant="secondary" size="sm" onClick={handleExport}>
-              <Download size={11} />
-            </Button>
-          </Tooltip>
-          <Button variant="primary" size="sm" onClick={() => doParse(activeTabId)}>
-            <Play size={11} fill="currentColor" />
-            Parse
-          </Button>
-        </div>
+        <Tooltip content={copied ? "¡Copiado!" : "Copiar DBML"}>
+          <button onClick={handleCopy} className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors flex-shrink-0">
+            {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+          </button>
+        </Tooltip>
+
+        <Tooltip content="Exportar como .dbml">
+          <button onClick={handleExport} className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors flex-shrink-0">
+            <Download size={12} />
+          </button>
+        </Tooltip>
+
+        {/* Divider */}
+        <div className="w-px h-3.5 bg-zinc-700/50 flex-shrink-0 mx-0.5" />
+
+        {/* Parse — always visible, amber accent */}
+        <Tooltip content="Parsear y visualizar">
+          <button onClick={() => doParse(activeTabId)} className="p-1.5 rounded text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors flex-shrink-0">
+            <Play size={12} fill="currentColor" />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Error + suggestions banner */}
