@@ -46,9 +46,9 @@ export interface ParsedSchema {
 }
 
 export type RefType = "<" | ">" | "-" | "<>";
-export type ConversionTarget = "typeorm" | "prisma" | "postgresql" | "sqlserver" | "mongodb" | "drizzle" | "sequelize" | "gorm" | "laravel";
+export type ConversionTarget = "typeorm" | "prisma" | "postgresql" | "sqlserver" | "mongodb" | "drizzle" | "sequelize" | "gorm" | "laravel" | "jpa";
 export type SQLDialect = "postgresql" | "sqlserver" | "mongodb";
-export type ActiveTab = "diagram" | "convert" | "import";
+export type ActiveTab = "diagram" | "convert" | "import" | "diff";
 
 export interface DiagramViewport {
   offsetX: number;

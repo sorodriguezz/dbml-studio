@@ -6,6 +6,7 @@ export { toDrizzle } from "./drizzle";
 export { toSequelize } from "./sequelize";
 export { toGORM } from "./gorm";
 export { toLaravel } from "./laravel";
+export { toJPA } from "./jpa";
 
 import type { ParsedSchema, ConversionTarget } from "@/types";
 import { toTypeORM } from "./typeorm";
@@ -15,6 +16,7 @@ import { toDrizzle } from "./drizzle";
 import { toSequelize } from "./sequelize";
 import { toGORM } from "./gorm";
 import { toLaravel } from "./laravel";
+import { toJPA } from "./jpa";
 
 export function convert(schema: ParsedSchema, target: ConversionTarget): string {
   if (!schema || schema.tables.length === 0) return "// Paste valid DBML and click Parse to generate code.";
@@ -28,6 +30,7 @@ export function convert(schema: ParsedSchema, target: ConversionTarget): string 
     case "sequelize":  return toSequelize(schema);
     case "gorm":       return toGORM(schema);
     case "laravel":    return toLaravel(schema);
+    case "jpa":        return toJPA(schema);
     default: return "";
   }
 }

@@ -12,6 +12,7 @@ const TARGETS: { id: ConversionTarget; label: string; color: string }[] = [
   { id: "mongodb",    label: "MongoDB",    color: "text-emerald-400" },
   { id: "gorm",       label: "GORM",       color: "text-teal-400" },
   { id: "laravel",    label: "Laravel",    color: "text-red-400" },
+  { id: "jpa",        label: "Java JPA",   color: "text-amber-500" },
 ];
 
 interface Props {

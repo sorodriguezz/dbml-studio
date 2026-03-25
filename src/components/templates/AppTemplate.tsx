@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
-import { DiagramCanvas, DBMLEditor, ConversionPanel, TableInspector, SQLImportPanel } from "@/components/organisms";
+import { DiagramCanvas, DBMLEditor, MultiSchemaEditor, DiffPanel, ConversionPanel, TableInspector, SQLImportPanel } from "@/components/organisms";
 import { ShareButton } from "@/components/molecules/ShareButton";
 import { DBMLReferenceModal } from "@/components/organisms/DBMLReferenceModal";
 import { Button } from "@/components/atoms";
@@ -13,6 +13,7 @@ const TABS: { id: ActiveTab; label: string }[] = [
   { id: "diagram", label: "Diagram" },
   { id: "convert", label: "Convert" },
   { id: "import", label: "SQL → DBML" },
+  { id: "diff", label: "Diff" },
 ];
 
 const MIN_W          = 180;
@@ -25,6 +26,9 @@ export function AppTemplate() {
   const { activeTab, setActiveTab, parsed, setDBML, parse } = useAppStore();
   const [showReference, setShowReference] = useState(false);
   const [loadingShared, setLoadingShared] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Load DBML from URL hash on mount
   useEffect(() => {
@@ -165,7 +169,7 @@ export function AppTemplate() {
 
         {/* Status */}
         <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-mono text-zinc-600">
-          {parsed?.tables.length ? (
+          {mounted && parsed?.tables.length ? (
             <><span className="text-emerald-500">●</span> {parsed.tables.length} tables parsed</>
           ) : (
             <><span className="text-zinc-700">○</span> Awaiting input</>
@@ -176,15 +180,18 @@ export function AppTemplate() {
       {/* ── Body ───────────────────────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* Left: DBML Editor */}
-        <aside
-          className="relative flex-shrink-0 border-r border-zinc-800/80 flex flex-col bg-zinc-900/20 overflow-hidden transition-all duration-200"
-          style={{ width: editorCollapsed ? 0 : editorW, minWidth: editorCollapsed ? 0 : MIN_W }}
-        >
-          <DBMLEditor />
-        </aside>
+        {/* Left: DBML Editor (hidden in diff mode) */}
+        {activeTab !== "diff" && (
+          <aside
+            className="relative flex-shrink-0 border-r border-zinc-800/80 flex flex-col bg-zinc-900/20 overflow-hidden transition-all duration-200"
+            style={{ width: editorCollapsed ? 0 : editorW, minWidth: editorCollapsed ? 0 : MIN_W }}
+          >
+            <MultiSchemaEditor />
+          </aside>
+        )}
 
-        {/* Editor resize / collapse handle */}
+        {/* Editor resize / collapse handle (hidden in diff mode) */}
+        {activeTab !== "diff" && (
         <div className="relative flex-shrink-0 flex items-center z-20">
           {!editorCollapsed && (
             <div
@@ -200,12 +207,14 @@ export function AppTemplate() {
             {editorCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
           </button>
         </div>
+        )}
 
         {/* Center: Main content */}
         <main className="flex-1 flex flex-col overflow-hidden">
           {activeTab === "diagram" && <DiagramCanvas />}
           {activeTab === "convert" && <ConversionPanel />}
           {activeTab === "import" && <SQLImportPanel />}
+          {activeTab === "diff" && <DiffPanel />}
         </main>
 
         {/* Inspector resize / collapse handle (diagram only) */}
