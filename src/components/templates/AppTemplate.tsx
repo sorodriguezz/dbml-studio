@@ -53,6 +53,9 @@ export function AppTemplate() {
   const [editorW, setEditorW]               = useState(DEFAULT_EDITOR_W);
   const [editorCollapsed, setEditorCollapsed] = useState(false);
   const editorDrag = useRef({ active: false, startX: 0, startW: DEFAULT_EDITOR_W });
+  const isResizingRef = useRef(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const rafRef = useRef<number | null>(null);
 
   // ── Inspector panel state ──────────────────────────────────────────
   const [inspectorW, setInspectorW]                   = useState(DEFAULT_INSPECTOR_W);
@@ -62,6 +65,8 @@ export function AppTemplate() {
   const onEditorDragDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     editorDrag.current = { active: true, startX: e.clientX, startW: editorW };
+    isResizingRef.current = true;
+    setIsResizing(true);
     document.body.style.cursor     = "col-resize";
     document.body.style.userSelect = "none";
   }, [editorW]);
@@ -69,27 +74,36 @@ export function AppTemplate() {
   const onInspectorDragDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     inspectorDrag.current = { active: true, startX: e.clientX, startW: inspectorW };
+    isResizingRef.current = true;
+    setIsResizing(true);
     document.body.style.cursor     = "col-resize";
     document.body.style.userSelect = "none";
   }, [inspectorW]);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (editorDrag.current.active) {
-        const next = Math.min(MAX_EDITOR_W, Math.max(MIN_W,
-          editorDrag.current.startW + (e.clientX - editorDrag.current.startX)));
-        setEditorW(next);
-      }
-      if (inspectorDrag.current.active) {
-        // Inspector is on the right: moving mouse LEFT increases its width
-        const next = Math.min(MAX_INSPECTOR_W, Math.max(MIN_W,
-          inspectorDrag.current.startW - (e.clientX - inspectorDrag.current.startX)));
-        setInspectorW(next);
-      }
+      if (!editorDrag.current.active && !inspectorDrag.current.active) return;
+      if (rafRef.current !== null) return; // already a frame queued
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (editorDrag.current.active) {
+          const next = Math.min(MAX_EDITOR_W, Math.max(MIN_W,
+            editorDrag.current.startW + (e.clientX - editorDrag.current.startX)));
+          setEditorW(next);
+        }
+        if (inspectorDrag.current.active) {
+          const next = Math.min(MAX_INSPECTOR_W, Math.max(MIN_W,
+            inspectorDrag.current.startW - (e.clientX - inspectorDrag.current.startX)));
+          setInspectorW(next);
+        }
+      });
     };
     const onUp = () => {
+      if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
       editorDrag.current.active    = false;
       inspectorDrag.current.active = false;
+      isResizingRef.current        = false;
+      setIsResizing(false);
       document.body.style.cursor     = "";
       document.body.style.userSelect = "";
     };
@@ -188,7 +202,7 @@ export function AppTemplate() {
         {/* Left: DBML Editor (hidden in diff/import mode) */}
         {activeTab !== "diff" && activeTab !== "import" && (
           <aside
-            className="relative flex-shrink-0 border-r border-zinc-800/80 flex flex-col bg-zinc-900/20 overflow-hidden transition-all duration-200"
+            className={`relative flex-shrink-0 border-r border-zinc-800/80 flex flex-col bg-zinc-900/20 overflow-hidden ${isResizing ? "" : "transition-all duration-200"}`}
             style={{ width: editorCollapsed ? 0 : editorW, minWidth: editorCollapsed ? 0 : MIN_W }}
           >
             <MultiSchemaEditor />
@@ -244,7 +258,7 @@ export function AppTemplate() {
         {/* Right: Inspector */}
         {activeTab === "diagram" && (
           <aside
-            className="flex-shrink-0 border-l border-zinc-800/80 bg-zinc-900/20 overflow-y-auto transition-all duration-200"
+            className={`flex-shrink-0 border-l border-zinc-800/80 bg-zinc-900/20 overflow-y-auto ${isResizing ? "" : "transition-all duration-200"}`}
             style={{ width: inspectorCollapsed ? 0 : inspectorW, minWidth: inspectorCollapsed ? 0 : MIN_W }}
           >
             <div className="sticky top-0 px-3 py-2 border-b border-zinc-800/60 bg-zinc-900/80 backdrop-blur z-10">

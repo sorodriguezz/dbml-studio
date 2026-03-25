@@ -32,23 +32,42 @@ export function useDiagramInteraction() {
   }, []);
 
   useEffect(() => {
+    let rafId: number | null = null;
+    // Store latest mouse position so RAF always uses freshest values
+    const pending = { clientX: 0, clientY: 0 };
+
     const handleMouseMove = (e: MouseEvent) => {
       const d = dragRef.current;
       if (!d.type) return;
-      const dx = e.clientX - d.startMouseX;
-      const dy = e.clientY - d.startMouseY;
-      if (d.type === "canvas") {
-        setViewport(d.startValueX + dx, d.startValueY + dy);
-      } else if (d.type === "table" && d.itemName) {
-        moveTable(d.itemName, d.startValueX + dx / zoom, d.startValueY + dy / zoom);
-      } else if (d.type === "enum" && d.itemName) {
-        moveEnum(d.itemName, d.startValueX + dx / zoom, d.startValueY + dy / zoom);
-      }
+      pending.clientX = e.clientX;
+      pending.clientY = e.clientY;
+      if (rafId !== null) return; // already scheduled
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const d2 = dragRef.current;
+        if (!d2.type) return;
+        const dx = pending.clientX - d2.startMouseX;
+        const dy = pending.clientY - d2.startMouseY;
+        if (d2.type === "canvas") {
+          setViewport(d2.startValueX + dx, d2.startValueY + dy);
+        } else if (d2.type === "table" && d2.itemName) {
+          moveTable(d2.itemName, d2.startValueX + dx / zoom, d2.startValueY + dy / zoom);
+        } else if (d2.type === "enum" && d2.itemName) {
+          moveEnum(d2.itemName, d2.startValueX + dx / zoom, d2.startValueY + dy / zoom);
+        }
+      });
     };
-    const handleMouseUp = () => { dragRef.current = { ...dragRef.current, type: null }; };
+    const handleMouseUp = () => {
+      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+      dragRef.current = { ...dragRef.current, type: null };
+    };
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
-    return () => { window.removeEventListener("mousemove", handleMouseMove); window.removeEventListener("mouseup", handleMouseUp); };
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
   }, [zoom, setViewport, moveTable, moveEnum]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
