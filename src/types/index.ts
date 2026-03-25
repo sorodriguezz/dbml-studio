@@ -34,6 +34,8 @@ export interface DBMLRef {
 export interface DBMLEnum {
   name: string;
   values: string[];
+  x: number;
+  y: number;
 }
 
 export interface ParsedSchema {
@@ -44,7 +46,7 @@ export interface ParsedSchema {
 }
 
 export type RefType = "<" | ">" | "-" | "<>";
-export type ConversionTarget = "typeorm" | "prisma" | "postgresql" | "sqlserver" | "mongodb";
+export type ConversionTarget = "typeorm" | "prisma" | "postgresql" | "sqlserver" | "mongodb" | "drizzle" | "sequelize" | "gorm" | "laravel";
 export type SQLDialect = "postgresql" | "sqlserver" | "mongodb";
 export type ActiveTab = "diagram" | "convert" | "import";
 

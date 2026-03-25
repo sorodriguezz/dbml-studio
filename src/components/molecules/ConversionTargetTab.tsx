@@ -3,11 +3,15 @@ import { cn } from "@/lib/utils/cn";
 import type { ConversionTarget } from "@/types";
 
 const TARGETS: { id: ConversionTarget; label: string; color: string }[] = [
-  { id: "typeorm", label: "TypeORM", color: "text-sky-400" },
-  { id: "prisma", label: "Prisma", color: "text-violet-400" },
+  { id: "typeorm",    label: "TypeORM",    color: "text-sky-400" },
+  { id: "prisma",     label: "Prisma",     color: "text-violet-400" },
+  { id: "drizzle",    label: "Drizzle",    color: "text-lime-400" },
+  { id: "sequelize",  label: "Sequelize",  color: "text-cyan-400" },
   { id: "postgresql", label: "PostgreSQL", color: "text-blue-400" },
-  { id: "sqlserver", label: "SQL Server", color: "text-orange-400" },
-  { id: "mongodb", label: "MongoDB", color: "text-emerald-400" },
+  { id: "sqlserver",  label: "SQL Server", color: "text-orange-400" },
+  { id: "mongodb",    label: "MongoDB",    color: "text-emerald-400" },
+  { id: "gorm",       label: "GORM",       color: "text-teal-400" },
+  { id: "laravel",    label: "Laravel",    color: "text-red-400" },
 ];
 
 interface Props {

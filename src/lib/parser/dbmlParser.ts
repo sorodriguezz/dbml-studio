@@ -15,7 +15,7 @@ function parseWithDBMLCore(input: string): ParsedSchema | null {
     const enums: DBMLEnum[] = [];
 
     for (const en of schema.enums ?? []) {
-      enums.push({ name: en.name, values: en.values.map((v: { name: string }) => v.name) });
+      enums.push({ name: en.name, values: en.values.map((v: { name: string }) => v.name), x: 0, y: 0 });
     }
     for (const table of schema.tables ?? []) {
       const fields: DBMLField[] = (table.fields ?? []).map((f: Record<string,unknown>) => ({
@@ -42,7 +42,7 @@ function parseWithDBMLCore(input: string): ParsedSchema | null {
         });
       }
     }
-    autoLayout(tables);
+    autoLayout(tables, enums);
     return { tables, refs, enums, errors: [] };
   } catch { return null; }
 }
@@ -66,7 +66,7 @@ function parseWithRegex(input: string): ParsedSchema {
   const enumRegex = /[Ee]num\s+["\']?(\w+)["\']?\s*\{([^}]*)\}/g;
   while ((m = enumRegex.exec(clean)) !== null) {
     const values = m[2].split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("Note"));
-    enums.push({ name: m[1], values });
+    enums.push({ name: m[1], values, x: 0, y: 0 });
   }
 
   const tableRegex = /[Tt]able\s+["\']?(\w+)["\']?\s*(?:as\s+(\w+)\s*)?\{([^}]*)\}/g;
@@ -109,15 +109,25 @@ function parseWithRegex(input: string): ParsedSchema {
   }
 
   if (tables.length === 0 && clean.trim().length > 20) errors.push("No tables found. Check DBML syntax.");
-  autoLayout(tables);
+  autoLayout(tables, enums);
   return { tables, refs, enums, errors };
 }
 
-function autoLayout(tables: DBMLTable[]): void {
+function autoLayout(tables: DBMLTable[], enums: DBMLEnum[] = []): void {
   const COLS = Math.max(1, Math.ceil(Math.sqrt(tables.length)));
+  let maxX = 0, maxY = 0;
   tables.forEach((t, i) => {
     t.x = (i % COLS) * 360 + 60;
     t.y = Math.floor(i / COLS) * 340 + 60;
+    maxX = Math.max(maxX, t.x + 360);
+    maxY = Math.max(maxY, t.y);
+  });
+  // Place enums to the right of all tables
+  const ENUM_W = 200;
+  const ENUM_GAP = 40;
+  enums.forEach((en, i) => {
+    en.x = maxX + ENUM_GAP;
+    en.y = 60 + i * (32 + en.values.length * 24 + 20);
   });
 }
 

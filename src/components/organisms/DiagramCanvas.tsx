@@ -1,17 +1,53 @@
 "use client";
-import { useRef, useEffect, useMemo, useCallback } from "react";
-import { ZoomIn, ZoomOut, RotateCcw, Download, LayoutGrid, Crosshair } from "lucide-react";
+import { useRef, useEffect, useMemo, useCallback, useState } from "react";
+import { ZoomIn, ZoomOut, RotateCcw, Download, LayoutGrid, Crosshair, Search, FileImage, X } from "lucide-react";
 import { TableCard } from "./TableCard";
 import { TableStats } from "@/components/molecules";
 import { Button, Tooltip } from "@/components/atoms";
 import { useAppStore } from "@/store/useAppStore";
 import { useDiagramInteraction } from "@/lib/hooks/useDiagramInteraction";
 import { useExportDiagram } from "@/lib/hooks/useExportDiagram";
-import type { DBMLRef } from "@/types";
+import type { DBMLRef, DBMLEnum } from "@/types";
 
 const TABLE_W = 260;
 const HEADER_H = 40;
 const FIELD_H = 32;
+const ENUM_W = 200;
+const ENUM_HEADER_H = 32;
+const ENUM_VALUE_H = 24;
+
+// ── Enum Card ────────────────────────────────────────────────────────────────
+interface EnumCardProps {
+  en: DBMLEnum;
+  onDragStart: (e: React.MouseEvent, en: DBMLEnum) => void;
+}
+
+function EnumCard({ en, onDragStart }: EnumCardProps) {
+  return (
+    <div
+      style={{ position: "absolute", left: en.x, top: en.y, width: ENUM_W, zIndex: 1 }}
+      onMouseDown={(e) => onDragStart(e, en)}
+      className="rounded-lg border border-violet-800/60 select-none bg-violet-950/30 shadow-lg shadow-violet-900/20 cursor-grab active:cursor-grabbing"
+    >
+      <div className="px-3 py-1.5 rounded-t-lg border-b border-violet-800/50 bg-violet-900/30 flex items-center gap-2">
+        <span className="text-[9px] font-mono text-violet-500 uppercase tracking-widest">ENUM</span>
+        <span className="font-mono font-bold text-xs text-violet-200 truncate">{en.name}</span>
+        <span className="ml-auto text-[10px] font-mono text-violet-600">{en.values.length}</span>
+      </div>
+      <div>
+        {en.values.map((v, i) => (
+          <div
+            key={i}
+            className="px-3 font-mono text-[11px] text-violet-300 border-b border-violet-900/40 last:border-0"
+            style={{ height: ENUM_VALUE_H, lineHeight: `${ENUM_VALUE_H}px` }}
+          >
+            {v}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface RefLine {
   key: string;
@@ -68,9 +104,10 @@ function useRefLines(refs: DBMLRef[], tables: Array<{ name: string; x: number; y
 export function DiagramCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { parsed, offsetX, offsetY, zoom, selectedTable, hoveredRef, selectTable, setHoveredRef, setZoom, resetViewport, reLayout, centerViewport } = useAppStore();
-  const { startCanvasDrag, startTableDrag, handleWheel } = useDiagramInteraction();
-  const { exportPNG } = useExportDiagram(containerRef, parsed?.tables ?? []);
+  const { startCanvasDrag, startTableDrag, startEnumDrag, handleWheel } = useDiagramInteraction();
+  const { exportPNG, exportSVG } = useExportDiagram(containerRef, parsed?.tables ?? [], parsed?.refs ?? [], parsed?.enums ?? []);
   const hasCenteredRef = useRef(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const el = containerRef.current;
@@ -103,6 +140,13 @@ export function DiagramCanvas() {
       selectTable(null);
     }
   }, [startCanvasDrag, selectTable]);
+
+  // Search filter — tables whose names match query
+  const filteredTableNames = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return null;
+    return new Set(parsed?.tables.filter(t => t.name.toLowerCase().includes(q)).map(t => t.name) ?? []);
+  }, [search, parsed]);
 
   if (!parsed || parsed.tables.length === 0) {
     return (
@@ -139,38 +183,49 @@ export function DiagramCanvas() {
         <rect width="100%" height="100%" fill="url(#dot-grid)" className="canvas-bg" />
       </svg>
 
-      {/* Table cards */}
+      {/* Table cards + Enum cards */}
       <div
         data-export="inner"
         style={{ transform: `translate(${offsetX}px,${offsetY}px) scale(${zoom})`, transformOrigin: "0 0", position: "absolute", top: 0, left: 0 }}
       >
         {parsed.tables.map(table => {
           const isInHoveredRef = hoveredRef && (hoveredRef.from === table.name || hoveredRef.to === table.name);
+          const isDimmed = filteredTableNames !== null && !filteredTableNames.has(table.name);
           return (
-            <TableCard
+            <div
               key={table.name}
-              table={table}
-              refs={parsed.refs}
-              isSelected={selectedTable === table.name}
-              isHighlighted={!!isInHoveredRef}
-              onSelect={selectTable}
-              onDragStart={startTableDrag}
-            />
+              style={{ opacity: isDimmed ? 0.18 : 1, transition: "opacity 0.2s ease", pointerEvents: isDimmed ? "none" : "auto" }}
+            >
+              <TableCard
+                table={table}
+                refs={parsed.refs}
+                isSelected={selectedTable === table.name}
+                isHighlighted={!!isInHoveredRef}
+                onSelect={selectTable}
+                onDragStart={startTableDrag}
+              />
+            </div>
           );
         })}
+
+        {/* Enum cards */}
+        {parsed.enums.map(en => (
+          <EnumCard key={en.name} en={en} onDragStart={startEnumDrag} />
+        ))}
       </div>
 
-      {/* Relationship lines — rendered AFTER table cards so they appear on top */}
+      {/* Relationship lines */}
       <svg data-export="svg-refs" className="absolute inset-0 w-full h-full" style={{ overflow: "visible", pointerEvents: "none" }}>
         <g transform={`translate(${offsetX},${offsetY}) scale(${zoom})`}>
           {refLines.map(line => {
             const isHovered = hoveredRef?.from === `${line.fromTable}.` || hoveredRef?.to === `${line.toTable}.` || 
                               (hoveredRef && line.key.includes(hoveredRef.from) && line.key.includes(hoveredRef.to));
+            const isDimmed = filteredTableNames !== null &&
+              !filteredTableNames.has(line.fromTable) && !filteredTableNames.has(line.toTable);
             const pathD = `M ${line.fx} ${line.fy} C ${line.cx1} ${line.fy}, ${line.cx2} ${line.ty}, ${line.tx} ${line.ty}`;
             
             return (
-              <g key={line.key} style={{ pointerEvents: "auto", cursor: "pointer" }}>
-                {/* Invisible wider path for easier hover detection */}
+              <g key={line.key} style={{ pointerEvents: "auto", cursor: "pointer", opacity: isDimmed ? 0.08 : 1 }}>
                 <path
                   d={pathD}
                   stroke="transparent"
@@ -179,7 +234,6 @@ export function DiagramCanvas() {
                   onMouseEnter={() => setHoveredRef({ from: line.fromTable, to: line.toTable })}
                   onMouseLeave={() => setHoveredRef(null)}
                 />
-                {/* Visible path */}
                 <path
                   d={pathD}
                   stroke={isHovered ? "#fbbf24" : "#f59e0b"}
@@ -190,16 +244,14 @@ export function DiagramCanvas() {
                   style={{ pointerEvents: "none", transition: "all 0.2s ease" }}
                 />
                 <circle 
-                  cx={line.fx} 
-                  cy={line.fy} 
+                  cx={line.fx} cy={line.fy} 
                   r={isHovered ? 5 / zoom : 3.5 / zoom} 
                   fill={isHovered ? "#fbbf24" : "#f59e0b"} 
                   fillOpacity={isHovered ? "1" : "0.9"}
                   style={{ pointerEvents: "none", transition: "all 0.2s ease" }}
                 />
                 <circle 
-                  cx={line.tx} 
-                  cy={line.ty} 
+                  cx={line.tx} cy={line.ty} 
                   r={isHovered ? 5 / zoom : 3.5 / zoom} 
                   fill={isHovered ? "#fbbf24" : "#f59e0b"} 
                   fillOpacity={isHovered ? "1" : "0.9"}
@@ -211,16 +263,39 @@ export function DiagramCanvas() {
         </g>
       </svg>
 
-      {/* HUD - top left */}
-      <div className="diagram-controls absolute top-3 left-3 z-20 flex gap-2">
+      {/* HUD - top left: stats + search */}
+      <div className="diagram-controls absolute top-3 left-3 z-20 flex flex-col gap-2">
         <TableStats schema={parsed} zoom={zoom} />
+        {/* Search bar */}
+        <div className="flex items-center gap-1.5 bg-zinc-900/90 border border-zinc-700/60 rounded-lg px-2 py-1 backdrop-blur-sm">
+          <Search size={11} className="text-zinc-500 flex-shrink-0" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar tabla…"
+            className="bg-transparent text-xs text-zinc-300 placeholder-zinc-600 font-mono outline-none w-28"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="text-zinc-600 hover:text-zinc-400 transition-colors">
+              <X size={10} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* HUD - top right */}
-      <div className="diagram-controls absolute top-3 right-3 z-20">
+      {/* HUD - top right: export buttons */}
+      <div className="diagram-controls absolute top-3 right-3 z-20 flex gap-1.5">
         <Tooltip content="Export PNG">
           <Button variant="secondary" size="sm" onClick={exportPNG}>
             <Download size={13} />
+            <span className="hidden sm:inline text-[11px]">PNG</span>
+          </Button>
+        </Tooltip>
+        <Tooltip content="Export SVG">
+          <Button variant="secondary" size="sm" onClick={exportSVG}>
+            <FileImage size={13} />
+            <span className="hidden sm:inline text-[11px]">SVG</span>
           </Button>
         </Tooltip>
       </div>
