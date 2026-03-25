@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Plus, X, Copy, ChevronDown } from "lucide-react";
 import { useTabsStore } from "@/store/useTabsStore";
 import { cn } from "@/lib/utils/cn";
@@ -9,7 +9,10 @@ export function SchemaTabBar() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const startEdit = useCallback((id: string, name: string) => {
     setEditingId(id);
@@ -36,7 +39,7 @@ export function SchemaTabBar() {
         style={{ minHeight: 36 }}
         onClick={() => contextMenu && closeMenu()}
       >
-        {tabs.map((tab) => {
+        {mounted && tabs.map((tab) => {
           const isActive = tab.id === activeTabId;
           return (
             <div
@@ -51,10 +54,10 @@ export function SchemaTabBar() {
               onDoubleClick={() => startEdit(tab.id, tab.name)}
               onContextMenu={(e) => handleContextMenu(e, tab.id)}
             >
-              {/* Status dot */}
+              {/* Status dot — green for active, gray for inactive */}
               <span className={cn(
                 "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                tab.isError ? "bg-red-500" : "bg-emerald-500/70"
+                isActive ? "bg-emerald-500" : "bg-zinc-600"
               )} />
 
               {/* Name / editable */}
@@ -91,7 +94,7 @@ export function SchemaTabBar() {
         })}
 
         {/* Add tab */}
-        {tabs.length < 8 && (
+        {mounted && tabs.length < 8 && (
           <button
             onClick={addTab}
             className="flex items-center justify-center w-8 h-9 text-zinc-600 hover:text-amber-400 hover:bg-zinc-800/50 transition-colors flex-shrink-0"

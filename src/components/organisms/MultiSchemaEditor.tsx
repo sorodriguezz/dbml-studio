@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Play, AlertTriangle, Download, Upload, Wand2, Clock, Lightbulb, ChevronDown } from "lucide-react";
+import { Play, AlertTriangle, Download, Upload, Wand2, Clock, Lightbulb, ChevronDown, Copy, Check } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { Button, Tooltip } from "@/components/atoms";
 import { useTabsStore } from "@/store/useTabsStore";
@@ -32,6 +32,7 @@ export function MultiSchemaEditor() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +117,13 @@ export function MultiSchemaEditor() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }, [activeTab]);
+
+  const handleCopy = useCallback(async () => {
+    if (!activeTab) return;
+    await navigator.clipboard.writeText(activeTab.dbml);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }, [activeTab]);
 
   const loadFile = useCallback((file: File) => {
@@ -236,6 +244,11 @@ export function MultiSchemaEditor() {
           <Tooltip content="Cargar .dbml">
             <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
               <Upload size={11} />
+            </Button>
+          </Tooltip>
+          <Tooltip content="Copiar DBML">
+            <Button variant="secondary" size="sm" onClick={handleCopy}>
+              {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
             </Button>
           </Tooltip>
           <Tooltip content="Exportar DBML">

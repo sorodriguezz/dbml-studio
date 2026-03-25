@@ -3,14 +3,18 @@ import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Share2, Link, Check, Copy, X, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/atoms";
-import { useAppStore } from "@/store/useAppStore";
+import { useTabsStore } from "@/store/useTabsStore";
 import { encodeDBMLToUrl } from "@/lib/utils/shareUrl";
 
 const URL_WARN_LENGTH = 3000;
 const URL_DANGER_LENGTH = 8000;
 
 export function ShareButton() {
-  const { dbml } = useAppStore();
+  const tabs = useTabsStore(s => s.tabs);
+  const activeTabId = useTabsStore(s => s.activeTabId);
+  const activeTab = tabs.find(t => t.id === activeTabId);
+  const dbml = activeTab?.dbml ?? "";
+  const schemaName = activeTab?.name ?? "Schema";
   const [showModal, setShowModal] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
@@ -63,6 +67,7 @@ export function ShareButton() {
               <div className="flex items-center gap-2">
                 <Link size={16} className="text-amber-400" />
                 <h3 className="text-sm font-semibold text-zinc-100">Compartir diagrama</h3>
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-[10px] font-mono text-amber-400 truncate max-w-[160px]">{schemaName}</span>
               </div>
               <button onClick={() => setShowModal(false)} className="text-zinc-500 hover:text-zinc-300 transition-colors">
                 <X size={16} />

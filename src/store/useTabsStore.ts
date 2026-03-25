@@ -67,6 +67,12 @@ Table categories {
   parent_id integer [ref: > categories.id]
 }`;
 
+const NEW_TAB_DBML = `Table example {
+  id integer [pk, increment]
+  name varchar(100) [not null]
+  created_at timestamp [default: 'now()']
+}`;
+
 function makeTab(name: string, dbml = DEFAULT_DBML): SchemaTab {
   // Don't parse at module load time: avoids SSR/client hydration mismatch.
   // Parsing is triggered on the client after mount via MultiSchemaEditor.
@@ -137,7 +143,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   addTab: () => {
     const { tabs } = get();
     if (tabs.length >= MAX_TABS) return;
-    const tab = makeTab(`Schema ${tabs.length + 1}`);
+    const tab = makeTab(`Schema ${tabs.length + 1}`, NEW_TAB_DBML);
     const next = [...tabs, tab];
     saveTabs(next, tab.id);
     set({ tabs: next, activeTabId: tab.id });

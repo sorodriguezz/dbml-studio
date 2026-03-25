@@ -6,6 +6,7 @@ import { ShareButton } from "@/components/molecules/ShareButton";
 import { DBMLReferenceModal } from "@/components/organisms/DBMLReferenceModal";
 import { Button } from "@/components/atoms";
 import { useAppStore } from "@/store/useAppStore";
+import { useTabsStore } from "@/store/useTabsStore";
 import { decodeDBMLFromUrl, clearDBMLFromUrl } from "@/lib/utils/shareUrl";
 import type { ActiveTab } from "@/types";
 
@@ -30,15 +31,19 @@ export function AppTemplate() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Load DBML from URL hash on mount
+  // Load DBML from URL hash on mount — write into the active tab, not just global store
   useEffect(() => {
     const shared = decodeDBMLFromUrl();
     if (shared) {
       setLoadingShared(true);
-      setDBML(shared);
       clearDBMLFromUrl();
+      const { activeTabId, updateTabDBML, parseTab, renameTab } = useTabsStore.getState();
+      updateTabDBML(activeTabId, shared);
+      renameTab(activeTabId, "Shared");
+      setDBML(shared);
       setTimeout(() => {
         parse();
+        parseTab(activeTabId);
         setLoadingShared(false);
       }, 150);
     }
